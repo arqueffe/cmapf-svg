@@ -1,0 +1,508 @@
+<!-- MIT License
+
+Copyright (c) 2021 Arthur Queffelec
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. -->
+
+<!doctype html>
+<html>
+    <head>
+		<title>Connected Multi-Agent Path: SVG</title>
+
+		<meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1, maximum-scale=1">
+        <script type="text/javascript" src="dat.gui/build/dat.gui.min.js"></script>
+	</head>
+
+	<body>
+
+    <svg width="100%" height="550" viewBox="100 0 800 400"
+    xmlns="http://www.w3.org/2000/svg" style="padding-left:0; padding-right:0;
+    margin-left: auto; margin-right:auto; display: block;">
+    <g id="svg">
+        <g id="movement"></g>
+        <g id="communication"></g>
+        <g id="node" style="-webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;">
+            <ellipse stroke-width="3" ry="30" rx="30" id="node_1" cy="60" cx="60" stroke="#000" fill="#778899"/>
+            <text x="60" y="60" text-anchor="middle" stroke="#000" dy=".3em" font-size="1.5em">1</text>
+            <ellipse stroke-width="3" ry="30" rx="30" id="node_2" cy="60" cx="280" stroke="#000" fill="#778899"/>
+            <text x="280" y="60" text-anchor="middle" stroke="#000" dy=".3em" font-size="1.5em">2</text>
+            <ellipse stroke-width="3" ry="30" rx="30" id="node_3" cy="60" cx="500" stroke="#000" fill="#778899"/>
+            <text x="500" y="60" text-anchor="middle" stroke="#000" dy=".3em" font-size="1.5em">3</text>
+            <ellipse stroke-width="3" ry="30" rx="30" id="node_4" cy="60" cx="720" stroke="#000" fill="#778899"/>
+            <text x="720" y="60" text-anchor="middle" stroke="#000" dy=".3em" font-size="1.5em">4</text>
+
+            <ellipse stroke-width="3" ry="30" rx="30" id="node_5" cy="210" cx="170" stroke="#000" fill="#778899"/>
+            <text x="170" y="210" text-anchor="middle" stroke="#000" dy=".3em" font-size="1.5em">5</text>
+            <ellipse stroke-width="3" ry="30" rx="30" id="node_6" cy="210" cx="390" stroke="#000" fill="#778899"/>
+            <text x="390" y="210" text-anchor="middle" stroke="#000" dy=".3em" font-size="1.5em">6</text>
+            <ellipse stroke-width="3" ry="30" rx="30" id="node_7" cy="210" cx="610" stroke="#000" fill="#778899"/>
+            <text x="610" y="210" text-anchor="middle" stroke="#000" dy=".3em" font-size="1.5em">7</text>
+
+            <ellipse stroke-width="3" ry="30" rx="30" id="node_8" cy="360" cx="60" stroke="#000" fill="#778899"/>
+            <text x="60" y="360" text-anchor="middle" stroke="#000" dy=".3em" font-size="1.5em">8</text>
+            <ellipse stroke-width="3" ry="30" rx="30" id="node_9" cy="360" cx="280" stroke="#000" fill="#778899"/>
+            <text x="280" y="360" text-anchor="middle" stroke="#000" dy=".3em" font-size="1.5em">9</text>
+            <ellipse stroke-width="3" ry="30" rx="30" id="node_10" cy="360" cx="500" stroke="#000" fill="#778899"/>
+            <text x="500" y="360" text-anchor="middle" stroke="#000" dy=".3em" font-size="1.5em">10</text>
+            <ellipse stroke-width="3" ry="30" rx="30" id="node_11" cy="360" cx="720" stroke="#000" fill="#778899"/>
+            <text x="720" y="360" text-anchor="middle" stroke="#000" dy=".3em"
+            font-size="1.5em">11</text>
+        </g>
+        <g id="agent"></g>
+        <g id="flag"></g>
+        <!-- <image xlink:href="figs/flag_red.png" id="flag_1" x="40" y="40" height="30" width="30" /> -->
+        <!-- <image xlink:href="figs/flag_blue.png" id="flag_2" x="40" y="40" height="30" width="30" />
+        <image xlink:href="figs/flag_green.png" id="flag_3" x="40" y="40" height="30" width="30" /> -->
+    </g>
+    </svg>
+    <script>
+        var gui = new dat.GUI({name: 'GUI'});
+
+        const edges = [[2,5,8], [5], [7,4], [7,11], [6,8,9], [7], [10,11], [9], [], [11], []];
+        const comms = [[2,5,8], [5,6,3], [7,4,6], [7,11], [6,8,9], [7,9,10], [10,11], [9], [10], [11], []];
+        const steps = [[1,2,8,5,3], [1,2,5,5,3], [1,5,6,5,3], [5,6,7,5,3], [6,7,11,5,3], [7,10,11,5,3]];
+
+        let agentCount = 0;
+
+        if (steps.length > 0) agentCount = steps[0].length;
+
+        const svg = document.getElementById("svg");
+        const movementGroup = document.getElementById("movement");
+        const movementParams = {
+            stroke: "#C7514E",
+            stroke_width: 3
+        };
+        const movementFolder = gui.addFolder('Movement');
+        movementFolder.addColor(movementParams, 'stroke').onChange(updateMovementEdges);
+        movementFolder.add(movementParams, 'stroke_width', 0, 10).onChange(updateMovementEdges);
+
+        function createMovementEdge(source_id, target_id){
+            const sourceNode = document.getElementById("node_"+source_id);
+            const targetNode = document.getElementById("node_"+target_id);
+            let movementLine = document.createElementNS('http://www.w3.org/2000/svg','line');
+            movementLine.setAttribute('y2', targetNode.cy.baseVal.value);
+            movementLine.setAttribute('x2', targetNode.cx.baseVal.value);
+            movementLine.setAttribute('x1', sourceNode.cx.baseVal.value);
+            movementLine.setAttribute('y1', sourceNode.cy.baseVal.value);
+            movementLine.setAttribute('id', 'movement_'+source_id+"_"+target_id);
+            movementLine.setAttribute('stroke-width', movementParams.stroke_width);
+            movementLine.setAttribute('stroke', movementParams.stroke);
+            movementGroup.append(movementLine);
+        }
+
+        function updateMovementEdge(source_id, target_id){
+            let movementLine = document.getElementById('movement_'+source_id+"_"+target_id);
+            if (movementLine == undefined) return;
+            movementLine.setAttribute('stroke-width', movementParams.stroke_width);
+            movementLine.setAttribute('stroke', movementParams.stroke);
+        }
+
+        function generateMovementEdges(){
+            for (let source_index in edges){
+                for (let target_number of edges[source_index]){
+                    createMovementEdge(parseInt(source_index)+1, target_number);
+                }
+            }
+        }
+
+        function updateMovementEdges(){
+            for (let source_index in edges){
+                for (let target_number of edges[source_index]){
+                    updateMovementEdge(parseInt(source_index)+1, target_number);
+                }
+            }
+        }
+
+        const communicationGroup = document.getElementById("communication");
+        const communicationParams = {
+            angle: 0.4,
+            ampli: 60,
+            stroke: "#C4C726",
+            stroke_width: 3,
+            dash_array: "10, 10"
+        }
+
+        const communicationFolder = gui.addFolder('Communication');
+        communicationFolder.add(communicationParams, 'angle', 0, 1).onChange(updateCommunicationEdges);
+        communicationFolder.add(communicationParams, 'ampli', 0, 100).onChange(updateCommunicationEdges);
+        communicationFolder.addColor(communicationParams, 'stroke').onChange(updateCommunicationEdges);
+        communicationFolder.add(communicationParams, 'stroke_width', 0, 10).onChange(updateCommunicationEdges);
+        communicationFolder.add(communicationParams, 'dash_array').onChange(updateCommunicationEdges);
+
+        function createCommunicationEdge(source_id, target_id){
+            const sourceNode = document.getElementById("node_"+source_id);
+            const targetNode = document.getElementById("node_"+target_id);
+            let communicationPath = document.createElementNS('http://www.w3.org/2000/svg','path');
+
+            const st_vector = [targetNode.cx.baseVal.value - sourceNode.cx.baseVal.value, targetNode.cy.baseVal.value - sourceNode.cy.baseVal.value];
+            const ts_vector = [sourceNode.cx.baseVal.value - targetNode.cx.baseVal.value, sourceNode.cy.baseVal.value - targetNode.cy.baseVal.value];
+            const st_mag = Math.sqrt(Math.pow(st_vector[0], 2) + Math.pow(st_vector[1], 2));
+            const ts_mag = Math.sqrt(Math.pow(ts_vector[0], 2) + Math.pow(ts_vector[1], 2));
+            st_vector[0] = st_vector[0]/st_mag;
+            st_vector[1] = st_vector[1]/st_mag;
+            ts_vector[0] = ts_vector[0]/ts_mag;
+            ts_vector[1] = ts_vector[1]/ts_mag;
+
+            const st_rot = [Math.cos(communicationParams.angle)*st_vector[0] - Math.sin(communicationParams.angle)*st_vector[1], Math.sin(communicationParams.angle)*st_vector[0] + Math.cos(communicationParams.angle)*st_vector[1]];
+            const ts_rot = [Math.cos(-communicationParams.angle)*ts_vector[0] - Math.sin(-communicationParams.angle)*ts_vector[1], Math.sin(-communicationParams.angle)*ts_vector[0] + Math.cos(-communicationParams.angle)*ts_vector[1]];
+
+            communicationPath.setAttribute('d', 'M'+sourceNode.cx.baseVal.value+' '+sourceNode.cy.baseVal.value+' C '+(communicationParams.ampli*st_rot[0]+sourceNode.cx.baseVal.value)+' '+(communicationParams.ampli*st_rot[1]+sourceNode.cy.baseVal.value)+', '+
+            (communicationParams.ampli*ts_rot[0]+targetNode.cx.baseVal.value)+' '+(communicationParams.ampli*ts_rot[1]+targetNode.cy.baseVal.value)+', '+targetNode.cx.baseVal.value+' '+targetNode.cy.baseVal.value);
+            communicationPath.setAttribute('stroke-width', communicationParams.stroke_width);
+            communicationPath.setAttribute('stroke', communicationParams.stroke);
+            communicationPath.setAttribute('stroke-dasharray', communicationParams.dash_array);
+            communicationPath.setAttribute('fill', 'transparent');
+            communicationPath.setAttribute('id', 'communication_'+source_id+'_'+target_id);
+
+            let communicationAnim = document.createElementNS('http://www.w3.org/2000/svg','animate');
+            communicationAnim.setAttribute('attributeType', 'CSS');
+            communicationAnim.setAttribute('id', 'comm_'+source_id+'_'+target_id);
+            communicationAnim.setAttribute('attributeName', 'stroke-dashoffset');
+            communicationAnim.setAttribute('values', "0;100;0")
+            communicationAnim.setAttribute('dur', '0s');
+            communicationAnim.setAttribute('repeatCount', 'indefinite');
+            communicationPath.append(communicationAnim);
+            communicationGroup.prepend(communicationPath);
+        }
+
+        function updateCommunicationEdge(source_id, target_id){
+            const sourceNode = document.getElementById("node_"+source_id);
+            const targetNode = document.getElementById("node_"+target_id);
+            let communicationPath = document.getElementById('communication_'+source_id+'_'+target_id);
+            const st_vector = [targetNode.cx.baseVal.value - sourceNode.cx.baseVal.value, targetNode.cy.baseVal.value - sourceNode.cy.baseVal.value];
+            const ts_vector = [sourceNode.cx.baseVal.value - targetNode.cx.baseVal.value, sourceNode.cy.baseVal.value - targetNode.cy.baseVal.value];
+            const st_mag = Math.sqrt(Math.pow(st_vector[0], 2) + Math.pow(st_vector[1], 2));
+            const ts_mag = Math.sqrt(Math.pow(ts_vector[0], 2) + Math.pow(ts_vector[1], 2));
+            st_vector[0] = st_vector[0]/st_mag;
+            st_vector[1] = st_vector[1]/st_mag;
+            ts_vector[0] = ts_vector[0]/ts_mag;
+            ts_vector[1] = ts_vector[1]/ts_mag;
+
+            const st_rot = [Math.cos(communicationParams.angle)*st_vector[0] - Math.sin(communicationParams.angle)*st_vector[1], Math.sin(communicationParams.angle)*st_vector[0] + Math.cos(communicationParams.angle)*st_vector[1]];
+            const ts_rot = [Math.cos(-communicationParams.angle)*ts_vector[0] - Math.sin(-communicationParams.angle)*ts_vector[1], Math.sin(-communicationParams.angle)*ts_vector[0] + Math.cos(-communicationParams.angle)*ts_vector[1]];
+
+            communicationPath.setAttribute('d', 'M'+sourceNode.cx.baseVal.value+' '+sourceNode.cy.baseVal.value+' C '+(communicationParams.ampli*st_rot[0]+sourceNode.cx.baseVal.value)+' '+(communicationParams.ampli*st_rot[1]+sourceNode.cy.baseVal.value)+', '+
+            (communicationParams.ampli*ts_rot[0]+targetNode.cx.baseVal.value)+' '+(communicationParams.ampli*ts_rot[1]+targetNode.cy.baseVal.value)+', '+targetNode.cx.baseVal.value+' '+targetNode.cy.baseVal.value);
+            communicationPath.setAttribute('stroke-width', communicationParams.stroke_width);
+            communicationPath.setAttribute('stroke', communicationParams.stroke);
+            communicationPath.setAttribute('stroke-dasharray', communicationParams.dash_array);
+        }
+
+        function generateCommunicationEdges(){
+            for (let source_index in comms){
+                for (let target_number of comms[source_index]){
+                    createCommunicationEdge(parseInt(source_index)+1, target_number);
+                }
+            }
+        }
+
+        function updateCommunicationEdges(){
+            for (let source_index in comms){
+                for (let target_number of comms[source_index]){
+                    updateCommunicationEdge(parseInt(source_index)+1, target_number);
+                }
+            }
+        }
+
+        generateMovementEdges();
+        generateCommunicationEdges();
+
+        const agentGroup = document.getElementById("agent");
+        const agentImageIcon = "assets/drone.png";
+        const agentParams = {
+            drop_shadow_color: "#000",
+            size: 60
+        }
+
+        const agentFolder = gui.addFolder('Agent');
+        agentFolder.addColor(agentParams, 'drop_shadow_color').onChange(updateAgents);
+        agentFolder.add(agentParams, 'size', 0, 200).onChange(updateAgents);
+
+        let agents = [];
+
+        function createAgents(){
+            for (let i = 0; i < agentCount; i++){
+                let agentImage = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+                agentImage.setAttribute("href", agentImageIcon);
+                agentImage.setAttribute("id", "agent_"+i);
+                const destinationNode = document.getElementById("node_"+steps[0][i]);
+                agentImage.setAttribute("x", destinationNode.cx.baseVal.value);
+                agentImage.setAttribute("y", destinationNode.cy.baseVal.value);
+                agentImage.setAttribute("height", agentParams.size);
+                agentImage.setAttribute("width", agentParams.size);
+                agentImage.setAttribute("transform", "translate(-"+agentParams.size+", -"+agentParams.size+")");
+                agentImage.setAttribute("style", "filter: drop-shadow("+agentParams.drop_shadow_color+" 2px 2px 0px) hue-rotate("+(360/agentCount)*i+"deg)");
+
+                let agentAnim = document.createElementNS('http://www.w3.org/2000/svg','animate');
+                agentAnim.setAttribute("attributeType", "CSS");
+                agentAnim.setAttribute("additive", "sum");
+                agentAnim.setAttribute("attributeName", "y");
+                agentAnim.setAttribute("values", "10;0;10");
+                agentAnim.setAttribute("dur", "2.5s");
+                agentAnim.setAttribute("repeatCount", "indefinite");
+                agentImage.append(agentAnim);
+                agentGroup.append(agentImage);
+                agents.push(agentImage);
+            }
+        }
+
+        function updateAgents(){
+            for (let i = 0; i < agentCount; i++){
+                let agentImage = agents[i];
+                agentImage.setAttribute("height", agentParams.size);
+                agentImage.setAttribute("width", agentParams.size);
+                agentImage.setAttribute("transform", "translate(-"+agentParams.size+", -"+agentParams.size+")");
+                agentImage.setAttribute("style", "filter: drop-shadow("+agentParams.drop_shadow_color+" 2px 2px 0px) hue-rotate("+(360/agentCount)*i+"deg)");
+            }
+        }
+
+        createAgents();
+
+        const flagGroup = document.getElementById("flag");
+        const flagImageIcon = "assets/flag.png";
+        const flagParams = {
+            size: 30
+        }
+
+        const flagFolder = gui.addFolder('Flag');
+        flagFolder.add(flagParams, 'size', 0, 100).onChange(updateFlags);
+
+        let flags = [];
+
+        function createFlags(){
+            for (let i = 0; i < agentCount; i++){
+                let flagImage = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+                flagImage.setAttribute("href", flagImageIcon);
+                flagImage.setAttribute("x", 0);
+                flagImage.setAttribute("y", 0);
+                flagImage.setAttribute("id", 'flag_'+i);
+                flagImage.setAttribute("height", flagParams.size);
+                flagImage.setAttribute("width", flagParams.size);
+                flagImage.setAttribute("style", "filter: hue-rotate("+(360/agentCount)*i+"deg)");
+                flagGroup.append(flagImage);
+                flags.push(flagImage);
+            }
+        }
+
+        function updateFlags(){
+            for (let i = 0; i < agentCount; i++){
+                let flagImage = document.getElementById('flag_'+i);
+                flagImage.setAttribute("height", flagParams.size);
+                flagImage.setAttribute("width", flagParams.size);
+                flagImage.setAttribute("style", "filter: hue-rotate("+(360/agentCount)*i+"deg)");
+            }
+        }
+
+        createFlags();
+
+        let stepCounter = 0;
+        let toDestroy = [];
+        let elapses = [];
+
+        function lerp(a, b, c) {
+            return a * (1 - c) + b * c;
+        }
+        let moveAgents = (timestamp) => {
+            let done = true;
+            for (let i = 0; i < agentCount; i++) {
+                const drone = agents[i];
+                var progress;
+                if (elapses[i] == 0) elapses[i] = timestamp;
+                progress = timestamp - elapses[i];
+                if (stepCounter == 0)
+                    return;
+                const dest_node = document.getElementById("node_"+steps[stepCounter][i]);
+                if (!(drone.x.baseVal.value <= dest_node.cx.baseVal.value - 5 || drone.x.baseVal.value >= dest_node.cx.baseVal.value + 5) && !(drone.y.baseVal.value <= dest_node.cy.baseVal.value - 5 || drone.y.baseVal.value >= dest_node.cy.baseVal.value + 5)){
+                    toDestroy[i] = true;
+                    done = done && true;
+                }
+                else{
+                    drone.x.baseVal.value = lerp(drone.x.baseVal.value, dest_node.cx.baseVal.value, progress*0.0005);
+                    drone.y.baseVal.value = lerp(drone.y.baseVal.value, dest_node.cy.baseVal.value, progress*0.0005);
+                    done = done && false;
+                }
+            }
+            if (!done)
+                requestAnimationFrame(moveAgents);
+        };
+
+        let currentAnims = [];
+
+        function animateCommunication(){
+            for (let anim of currentAnims){
+                anim.setAttribute('dur', '0s');
+            }
+            currentAnims = [];
+            if (steps.length == 0) return;
+
+            const step = steps[stepCounter];
+            for (let source_index in comms){
+                for (let target_id of comms[source_index]){
+                    if (source_index+1 == target_id)
+                        continue;
+                    if (step.includes(parseInt(source_index)+1) && step.includes(target_id)){
+                        let anim = document.getElementById("comm_"+(parseInt(source_index)+1)+"_"+target_id);
+                        if (anim == null)
+                            anim = document.getElementById("comm_"+target_id+"_"+(parseInt(source_index)+1));
+                        else
+                            anim.setAttribute('dur', '6s');
+                        currentAnims.push(anim);
+                    }
+                }
+            }
+        }
+
+        animateCommunication();
+
+        // rgb2Hsl is extracted from the following project
+        // https://github.com/netbeast/colorsys/blob/master/colorsys.js
+
+        function rgb2Hsl(r, g, b) {
+            if (typeof r === 'object') {
+                const args = r
+                r = args.r; g = args.g; b = args.b;
+            }
+            // It converts [0,255] format, to [0,1]
+            r = (r === RGB_MAX) ? 1 : (r % RGB_MAX / parseFloat(RGB_MAX))
+            g = (g === RGB_MAX) ? 1 : (g % RGB_MAX / parseFloat(RGB_MAX))
+            b = (b === RGB_MAX) ? 1 : (b % RGB_MAX / parseFloat(RGB_MAX))
+
+            var max = Math.max(r, g, b)
+            var min = Math.min(r, g, b)
+            var h, s, l = (max + min) / 2
+
+            if (max === min) {
+                h = s = 0 // achromatic
+            } else {
+                var d = max - min
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+                switch (max) {
+                case r:
+                    h = (g - b) / d + (g < b ? 6 : 0)
+                    break
+                case g:
+                    h = (b - r) / d + 2
+                    break
+                case b:
+                    h = (r - g) / d + 4
+                    break
+                }
+                h /= 6
+            }
+
+            return {
+                h: Math.round(h * HUE_MAX),
+                s: Math.round(s * SV_MAX),
+                l: Math.round(l * SV_MAX)
+            }
+        }
+
+        function setStartColor(){
+            const rotation_hsl = rgb2Hsl(200, 0, 0);
+            for (let agent = 0; agent < agentCount; agent++){
+                const dest_node = document.getElementById("node_"+steps[0][agent]);
+                rotation_hsl.h = agent != 0 ? rotation_hsl.h+(360/agentCount) : rotation_hsl.h;
+                dest_node.setAttribute("stroke", "hsl("+rotation_hsl.h+","+rotation_hsl.s+"%,"+rotation_hsl.l+"%)");
+            }
+        }
+
+        setStartColor();
+
+        function setEndFlag(){
+            for (const end in steps[steps.length-1]){
+                const dest_node = document.getElementById("node_"+steps[steps.length-1][end]);
+                const dest_flag = flags[end];
+                dest_flag.x.baseVal.value = dest_node.cx.baseVal.value + 10;
+                dest_flag.y.baseVal.value = dest_node.cy.baseVal.value - 20;
+            }
+        }
+
+        setEndFlag();
+
+        function runNextFrame(){
+                if (stepCounter == steps.length-1) return;
+                stepCounter++;
+                animateCommunication();
+                elapses = [0,0,0];
+                requestAnimationFrame(moveAgents);
+        }
+
+        function runPreviousFrame(){
+            if (stepCounter == 0){
+                    return;
+                }
+                stepCounter--;
+                animateCommunication();
+                for (let agent = 0; agent < agentCount; agent++) {
+                    const drone = agents[agent];
+                    const step = steps[stepCounter];
+                    const dest_node = document.getElementById("node_"+step[agent]);
+                    drone.style.visibility = 'hidden';
+                    drone.x.baseVal.value = dest_node.cx.baseVal.value;
+                    drone.y.baseVal.value = dest_node.cy.baseVal.value;
+                    drone.style.visibility = 'visible';
+                }
+        }
+
+        const globalParams = {
+            auto_run: true
+        }
+
+        const autoRunController = gui.add(globalParams, 'auto_run');
+
+        document.addEventListener('contextmenu', function(event){
+            event.preventDefault();
+            globalParams.auto_run = false;
+            autoRunController.setValue(false);
+            runPreviousFrame();
+        });
+
+        document.addEventListener("click", function(event) {
+            globalParams.auto_run = false;
+            autoRunController.setValue(false);
+            runNextFrame();
+        });
+
+        let autoRunElapsed = 0;
+        let autoFrame = (timestamp) => {
+            let progress;
+            if (autoRunElapsed == 0) autoRunElapsed = timestamp;
+            progress = timestamp - autoRunElapsed;
+            if (progress >= 1000)
+            {
+                autoRunElapsed = 0;
+                if (stepCounter >= steps.length -1)
+                {
+                    stepCounter = 1;
+                    runPreviousFrame();
+                }
+                else
+                {
+                    runNextFrame();
+                }
+            }
+            if (globalParams.auto_run)
+                requestAnimationFrame(autoFrame);
+        };
+
+        autoRunController.onChange(() => requestAnimationFrame(autoFrame));
+        requestAnimationFrame(autoFrame);
+    </script>
+
+    </body>
+</html>
